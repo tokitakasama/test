@@ -1,9 +1,15 @@
+const fileInput = document.getElementById('fileInput');
 const video = document.getElementById('video');
 const hls = new HLS();
 
-if (HLS.isSupported()) {
-  hls.attachMedia(video);
-  hls.loadSource('your_m3u8_file.m3u8');
-} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-  video.src = 'your_m3u8_file.m3u8';
-}
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  const fileURL = URL.createObjectURL(file);
+
+  if (HLS.isSupported()) {
+    hls.attachMedia(video);
+    hls.loadSource(fileURL);
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = fileURL;
+  }
+});
