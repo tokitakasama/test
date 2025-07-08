@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube ストリーミングURL取得ツール (外部UI)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 2em;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px); /* Padding + border */
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #resultContainer {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            min-height: 80px;
+            overflow-x: auto;
+            white-space: pre-wrap; /* 改行を保持 */
+            word-break: break-all; /* 長いURLを改行 */
+            color: #444;
+            font-size: 0.95em;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .stream-link {
+            color: #007bff; /* リンクの色 */
+            text-decoration: underline; /* 下線 */
+        }
+        .stream-link:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube ストリーミングURL取得</h1>
+        <p>YouTube動画URLを入力し、ストリーミングURLを取得します。</p>
+        <label for="youtubeUrlInput">YouTube動画URL:</label>
+        <input type="text" id="youtubeUrlInput" placeholder="例: https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+        <button onclick="getStreamUrls()">ストリーミングURLを取得</button>
+        <div id="resultContainer">
+            ここに結果が表示されます。
+        </div>
+    </div>
+
+    <script>
+        // ★★★ ここにあなたがデプロイしたGAS APIのURLを設定してください ★★★
+        // 例: "https://script.google.com/macros/s/AKfycbz_YOUR_DEPLOYMENT_ID_HERE/exec"
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytDNDQdJ1EpbdF3961QBM9HW5_Gfg1jQ_s4_x4EiZgA8D2D2Z5kjZgda7NeaK9Dd2zoQ/exec"; 
+
+        async function getStreamUrls() {
+            const youtubeUrl = document.getElementById('youtubeUrlInput').value;
+            const resultContainer = document.getElementById('resultContainer');
+            
+            resultContainer.innerHTML = '取得中...';
+            resultContainer.className = ''; // クラスをリセット
+
+            if (!youtubeUrl) {
+                resultContainer.innerHTML = '<span class="error">エラー: YouTube URLを入力してください。</span>';
+                return;
+            }
+
+            // GAS APIのURLが正しく設定されているか簡易的にチェック
+            if (GAS_API_URL === "ここにデプロイしたGAS APIのURLを貼り付けてください" || !GAS_API_URL.startsWith("https://script.google.com/macros/s/")) {
+                resultContainer.innerHTML = '<span class="error">設定エラー: GAS APIのURLが正しく設定されていません。HTMLファイル内のJavaScriptコードを確認してください。</span>';
+                return;
+            }
+
+            try {
+                // GAS APIのURLにYouTube URLをクエリパラメータとして追加
+                const apiUrl = `${GAS_API_URL}?url=${encodeURIComponent(youtubeUrl)}`;
+                
+                // APIを呼び出す (APIは単一のプレーンテキストURLまたはエラーメッセージを返す)
+                const response = await fetch(apiUrl);
+                const responseText = await response.text(); // プレーンテキストとして受け取る
+
+                // レスポンスがエラーメッセージを含むか判断
+                if (responseText.startsWith("エラー:") || responseText.startsWith("内部サーバーエラー:")) {
+                    resultContainer.className = 'error';
+                    resultContainer.innerHTML = `<span class="error">${responseText}</span>`;
+                } else {
+                    // エラーメッセージでなければ、それが直接ストリームURLであると仮定
+                    const streamUrl = responseText.trim(); 
+
+                    if (streamUrl) {
+                        resultContainer.className = 'success';
+                        resultContainer.innerHTML = `
+                            <span class="success">成功:</span><br><br>
+                            <p>取得されたストリームURL:</p>
+                            <p><a href="${streamUrl}" target="_blank" class="stream-link">
+                                ${streamUrl.substring(0, 70)}...
+                            </a></p>
+                            <p class="note">※リンクをクリックして動画を再生またはダウンロードしてください。</p>
+                        `;
+                    } else {
+                        resultContainer.className = 'error';
+                        resultContainer.innerHTML = '<span class="error">エラー: ストリームURLが返されませんでした。</span>';
+                    }
+                }
+            } catch (error) {
+                resultContainer.className = 'error';
+                resultContainer.innerHTML = `<span class="error">通信エラーが発生しました:</span> ${error.message}<br>GAS APIのURLが正しいか、デプロイされているか確認してください。`;
+                console.error('API呼び出し中にエラーが発生しました:', error);
+            }
+        }
+    </script>
+</body>
+</html>
